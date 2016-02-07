@@ -1,15 +1,6 @@
 import cv2
 import numpy
 
-numberOfFrames = 180
-i = 0 
-frames = []
-
-def readFrames(fileName):
-	while i < numberOfFrames:
-		frames.append(cv2.imread(fileName))
-		i += 1
-
 def localDescriptors(frames):
 
 	frameCount = 0
@@ -53,13 +44,31 @@ def localDescriptors(frames):
 					d += 1
 
 				#Temporal Descriptor
-				for k in range(frameCount + 1, frameCount + 6):
+				for k in range(frameCount + 1, min(frameCount + 6, len(frames))):
 					nextPatch = frames[k][ i : i + 10, j : j + 8]	
 					descriptors[patchNumber][d]	= ssim(nextPatch, patch)
 					d += 1
 
 				patchNumber += 1
 
+		
+
+def readFrames(fileName):
+	
+	frames = []
+	numberOfFrames = 180
+	i = 0
+
+	while i < numberOfFrames:
+		frames.append(cv2.imread(fileName))
+		i += 1
+
+	localDescriptors(frames)
+
+if __name__ == "__main__":
+
+	x = 'x.jpg'
+	readFrames(x)
 
 
 					
