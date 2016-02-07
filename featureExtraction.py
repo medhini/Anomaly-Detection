@@ -40,18 +40,21 @@ def localDescriptors(frames):
 				d = 0 #Descriptor number
 
 				for neighbour in spatialNeighbours:
-					descriptors[patchNumber][d] = ssim(neighbour, patch)
+					#descriptors[patchNumber][d] = ssim(neighbour, patch)
 					d += 1
 
 				#Temporal Descriptor
 				for k in range(frameCount + 1, min(frameCount + 6, len(frames))):
 					nextPatch = frames[k][ i : i + 10, j : j + 8]	
-					descriptors[patchNumber][d]	= ssim(nextPatch, patch)
+					#descriptors[patchNumber][d]	= ssim(nextPatch, patch)
 					d += 1
 
 				patchNumber += 1
 
-		
+	return descriptors
+
+def globalDescriptors(frames):
+	return 
 
 def readFrames(fileName):
 	
@@ -63,7 +66,8 @@ def readFrames(fileName):
 		frames.append(cv2.imread(fileName))
 		i += 1
 
-	localDescriptors(frames)
+	localD = localDescriptors(frames)
+
 
 if __name__ == "__main__":
 
