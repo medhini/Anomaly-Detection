@@ -1,5 +1,7 @@
 import cv2
-import numpy
+import numpy 
+from skimage.measure import structural_similarity as ssim
+import matplotlib.pyplot as plt
 
 def localDescriptors(frames):
 
@@ -16,11 +18,11 @@ def localDescriptors(frames):
 		patchNumber = 0
 
 		#Spatial Descriptor
-		for i in xrange(0, m):
-			for j in xrange(0,n):
+		for x in xrange(0, m):
+			for y in xrange(0,n):
 
-				x = i * 10
-				y = j * 8
+				i = x * 10
+				j = y * 8
 				
 				patch = frame[ i : i + 10, j : j + 8]
 
@@ -40,13 +42,13 @@ def localDescriptors(frames):
 				d = 0 #Descriptor number
 
 				for neighbour in spatialNeighbours:
-					#descriptors[patchNumber][d] = ssim(neighbour, patch)
+					descriptors[patchNumber][d] = ssim(neighbour, patch)
 					d += 1
 
 				#Temporal Descriptor
 				for k in range(frameCount + 1, min(frameCount + 6, len(frames))):
 					nextPatch = frames[k][ i : i + 10, j : j + 8]	
-					#descriptors[patchNumber][d]	= ssim(nextPatch, patch)
+					descriptors[patchNumber][d]	= ssim(nextPatch, patch)
 					d += 1
 
 				patchNumber += 1
@@ -68,12 +70,16 @@ def readFrames(fileName):
 
 	localD = localDescriptors(frames)
 
+	return localD
 
 if __name__ == "__main__":
 
 	x = 'x.jpg'
-	readFrames(x)
+	d = readFrames(x)
 
+	for x in xrange(len(d)):
+		for y in xrange(len(d[0])):
+			print d[x][y],
 
 					
 
