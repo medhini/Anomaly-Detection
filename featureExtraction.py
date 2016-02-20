@@ -77,6 +77,7 @@ def localDescriptors(frames):
 					descriptorFile.write("%f " % descriptors[patchNumber][d])
 					d += 1
 
+				descriptorFile.write("\n")
 				patchNumber += 1
 	return 
 
