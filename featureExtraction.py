@@ -4,11 +4,12 @@ from skimage.measure import structural_similarity as ssim
 import matplotlib.pyplot as plt
 import os, os.path
 from skimage import color
+import csv
 
 def localDescriptors(frames):
 
 	frameCount = 0
-
+	descriptorFile = open("descriptorFile", "wb")
 	for frame in frames:
 		frameCount += 1
 		m,n = frame.shape[:2]
@@ -18,14 +19,16 @@ def localDescriptors(frames):
 
 		descriptors = numpy.zeros((m * n, 13)) 
 		patchNumber = 0
+	
+		descriptorFile.write("%d\n" % frameCount)
 
-		#Spatial Descriptor
 		for x in xrange(0, m):
 			for y in xrange(0,n):
 
+				descriptorFile.write("%d : " % patchNumber)
 				i = x * 10
 				j = y * 8
-				
+
 				patch = frame[ i : i + 10, j : j + 8]
 
 				spatialNeighbours = []
@@ -43,31 +46,39 @@ def localDescriptors(frames):
 
 				d = 0 #Descriptor number
 
+				# Spatial Descriptor
 				for neighbour in spatialNeighbours:
+					patch = color.rgb2gray(patch)
+					neighbour = color.rgb2gray(neighbour)
 					if(patch.shape == neighbour.shape):
-						patch = color.rgb2gray(patch)
-						neighbour = color.rgb2gray(neighbour)
 						# print patch.shape, neighbour.shape
 						descriptors[patchNumber][d] = ssim(neighbour, patch)
+						
 					else :
 						descriptors[patchNumber][d] = 0	
+
+					descriptorFile.write("%f " % descriptors[patchNumber][d])
 					d += 1
 
 				# Temporal Descriptor
-				for k in range(frameCount + 1, min(frameCount + 6, len(frames))):
-					nextPatch = frames[k][ i : i + 10, j : j + 8]	
-					if(nextPatch.shape == patch.shape):
-						patch = color.rgb2gray(patch)
-						nextPatch = color.rgb2gray(nextPatch)
-						descriptors[patchNumber][d]	= ssim(nextPatch, patch)
+				for k in range(frameCount + 1, frameCount + 6):
+					
+					if k < len(frames):
+						nextPatch = frames[k][ i : i + 10, j : j + 8]	
+						if(nextPatch.shape == patch.shape):
+							patch = color.rgb2gray(patch)
+							nextPatch = color.rgb2gray(nextPatch)
+							descriptors[patchNumber][d]	= ssim(nextPatch, patch)
+						else :
+							descriptors[patchNumber][d] = 0
 					else :
 						descriptors[patchNumber][d] = 0
+					
+					descriptorFile.write("%f " % descriptors[patchNumber][d])
 					d += 1
 
 				patchNumber += 1
-				# print patchNumber
-		print frameCount
-	return descriptors
+	return 
 
 def globalDescriptors(frames):
 	return 
@@ -84,15 +95,13 @@ def readFrames(directory):
 		frames.append(cv2.imread(fileNames[i]))
 		i += 1
 
-	print frames
-	localD = localDescriptors(frames)
-
-	return localD
+	localDescriptors(frames)
+	return 
 
 if __name__ == "__main__":
 
 	DIR = 'UCSD_Anomaly_Dataset.v1p2/UCSDped2/Train/Train001'
-	d = readFrames(DIR)
+	readFrames(DIR)
 
 	# for x in xrange(len(d)):
 	# 	for y in xrange(len(d[0])):
