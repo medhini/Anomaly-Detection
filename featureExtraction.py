@@ -64,10 +64,10 @@ def localDescriptors(frames):
 				for k in range(frameCount + 1, frameCount + 6):
 					
 					if k < len(frames):
-						nextPatch = frames[k][ i : i + 10, j : j + 8]	
+						nextPatch = frames[k][ i : i + 10, j : j + 8]
+						patch = color.rgb2gray(patch)
+						nextPatch = color.rgb2gray(nextPatch)	
 						if(nextPatch.shape == patch.shape):
-							patch = color.rgb2gray(patch)
-							nextPatch = color.rgb2gray(nextPatch)
 							descriptors[patchNumber][d]	= ssim(nextPatch, patch)
 						else :
 							descriptors[patchNumber][d] = 0
