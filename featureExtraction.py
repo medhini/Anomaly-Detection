@@ -8,80 +8,112 @@ import csv
 
 def localDescriptors(frames):
 
-	frameCount = 0
 	descriptorFile = open("descriptorFile", "wb")
-	for frame in frames:
-		frameCount += 1
-		m,n = frame.shape[:2]
+	for frameNumber in range(0, len(frames), 5):
+		
+		m,n = frames[frameNumber].shape[:2]
 
 		m = m / 10
 		n = n / 8
 
-		descriptors = numpy.zeros((m * n, 13)) 
+		descriptors = numpy.zeros((m * n, 14)) 
 		patchNumber = 0
 	
-		descriptorFile.write("%d\n" % frameCount)
-
+		descriptorFile.write("%d\n" % frameNumber)
+			
 		for x in xrange(0, m):
 			for y in xrange(0,n):
-
 				descriptorFile.write("%d : " % patchNumber)
 				i = x * 10
 				j = y * 8
 
-				patch = frame[ i : i + 10, j : j + 8]
-
-				spatialNeighbours = []
-				
-				#AntiClock - wise spatialNeighbours starting from left of current patch
-
-				spatialNeighbours.append(frame[ i - 10 : i, j : j + 8])
-				spatialNeighbours.append(frame[ i - 10 : i, j + 8 : j + 16])
-				spatialNeighbours.append(frame[ i : i + 10, j + 8 : j + 16])
-				spatialNeighbours.append(frame[ i + 10 : i + 20, j + 8 : j + 16])
-				spatialNeighbours.append(frame[ i + 10 : i + 20, j : j + 8])
-				spatialNeighbours.append(frame[ i + 10 : i + 20, j - 8 : j])
-				spatialNeighbours.append(frame[ i : i + 10, j - 8 : j])
-				spatialNeighbours.append(frame[ i - 10 : i, j - 8 : j])
-
-				d = 0 #Descriptor number
-
 				# Spatial Descriptor
-				for neighbour in spatialNeighbours:
-					patch = color.rgb2gray(patch)
-					neighbour = color.rgb2gray(neighbour)
-					if(patch.shape == neighbour.shape):
-						# print patch.shape, neighbour.shape
-						descriptors[patchNumber][d] = ssim(neighbour, patch)
-						
-					else :
-						descriptors[patchNumber][d] = 0	
-
-					descriptorFile.write("%f " % descriptors[patchNumber][d])
-					d += 1
-
-				# Temporal Descriptor
-				for k in range(frameCount + 1, frameCount + 6):
+				for frame in range(frameNumber, frameNumber + 5, 1):
 					
-					if k < len(frames):
-						nextPatch = frames[k][ i : i + 10, j : j + 8]
+					d = 0 #Descriptor number
+					patch = frames[frame][ i : i + 10, j : j + 8]
+					spatialNeighbours = []
+					
+					#AntiClock - wise spatialNeighbours starting from left of current patch
+
+					spatialNeighbours.append(frames[frame][ i - 10 : i, j : j + 8])
+					spatialNeighbours.append(frames[frame][ i - 10 : i, j + 8 : j + 16])
+					spatialNeighbours.append(frames[frame][ i : i + 10, j + 8 : j + 16])
+					spatialNeighbours.append(frames[frame][ i + 10 : i + 20, j + 8 : j + 16])
+					spatialNeighbours.append(frames[frame][ i + 10 : i + 20, j : j + 8])
+					spatialNeighbours.append(frames[frame][ i + 10 : i + 20, j - 8 : j])
+					spatialNeighbours.append(frames[frame][ i : i + 10, j - 8 : j])
+					spatialNeighbours.append(frames[frame][ i - 10 : i, j - 8 : j])
+
+					for neighbour in spatialNeighbours:
+						patch = color.rgb2gray(patch)
+						neighbour = color.rgb2gray(neighbour)
+						if(patch.shape == neighbour.shape):
+							# print patch.shape, neighbour.shape
+							descriptors[patchNumber][d] += ssim(neighbour, patch)
+						d += 1
+
+				for iter in range(8):
+					descriptors[patchNumber][iter] /= 5
+					descriptorFile.write("%f " % descriptors[patchNumber][iter])
+					
+				d = 8
+				# Temporal Descriptors
+				for frame in range(frameNumber, frameNumber + 4, 1):
+					if frame + 1 < len(frames):
+						patch = frames[frame][i : i + 10, j : j + 8]
+						nextPatch = frames[frame + 1][i : i + 10, j : j + 8]
 						patch = color.rgb2gray(patch)
 						nextPatch = color.rgb2gray(nextPatch)	
 						if(nextPatch.shape == patch.shape):
 							descriptors[patchNumber][d]	= ssim(nextPatch, patch)
-						else :
-							descriptors[patchNumber][d] = 0
-					else :
-						descriptors[patchNumber][d] = 0
 					
 					descriptorFile.write("%f " % descriptors[patchNumber][d])
 					d += 1
+
+				if frameNumber - 5 >= 0:
+					for frame in range(frameNumber - 5, frameNumber):
+						patch1 = frames[frame][i : i + 10, j : j + 8]
+						patch2 = frames[frame + 5][i : i + 10, j : j + 8]
+						patch1 = color.rgb2gray(patch1)
+						patch2 = color.rgb2gray(patch2)
+						if (patch1.shape == patch2.shape):
+							descriptors[patchNumber][d]	+= ssim(patch1, patch2) 
+						else :
+							descriptors[patchNumber][d]	+= 0
+
+				descriptors[patchNumber][d] /= 5
+				descriptorFile.write("%f " % descriptors[patchNumber][d])
+				d += 1
+
+				if frameNumber + 10 < len(frames):
+					for frame in range(frameNumber, frameNumber + 5):
+						patch1 = frames[frame][i : i + 10, j : j + 8]
+						patch2 = frames[frame + 5][i : i + 10, j : j + 8]
+						patch1 = color.rgb2gray(patch1)
+						patch2 = color.rgb2gray(patch2)
+						if (patch1.shape == patch2.shape):
+							descriptors[patchNumber][d]	+= ssim(patch1, patch2)
+						else :
+							descriptors[patchNumber][d]	+= 0
+
+				descriptors[patchNumber][d] /= 5
+				descriptorFile.write("%f " % descriptors[patchNumber][d])
+				d += 1
 
 				descriptorFile.write("\n")
 				patchNumber += 1
 	return 
 
 def globalDescriptors(frames):
+
+	# cubes = []
+	# for i in range(0, len(frames), 5):
+
+	# 	for j in range(i, i + 5, 1):
+						
+
+
 	return 
 
 def readFrames(directory):
