@@ -180,7 +180,7 @@ def readFrames(directory):
 		i += 1
 
 	localDescriptors(frames)
-	# globalDescriptors(frames)
+	globalDescriptors(frames)
 	return 
 
 if __name__ == "__main__":
