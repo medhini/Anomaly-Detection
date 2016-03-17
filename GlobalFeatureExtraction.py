@@ -16,6 +16,7 @@ def sigmoid(x):
 def KLDivergence(rho, rhoCap):
 	return np.sum(rho*np.log(rho/rhoCap) + (1 - rho)/np.log((1 - rho)/ (1 - rhoCap)))
 
+#Autoencoder
 def globalDescriptors(frames):
 	
 	inputLayerSize  = 500    # side length of sampled image patches
