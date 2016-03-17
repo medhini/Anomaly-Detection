@@ -5,167 +5,138 @@ import matplotlib.pyplot as plt
 import os, os.path
 from skimage import color
 import csv
-
-def localDescriptors(frames):
-
-	descriptorFile = open("descriptorFile-test", "wb")
-	for frameNumber in range(0, len(frames), 5):
-		
-		m,n = frames[frameNumber].shape[:2]
-
-		m = m / 10
-		n = n / 10
-
-		descriptors = np.zeros((m * n, 14)) 
-		patchNumber = 0
-	
-		descriptorFile.write("%d\n" % frameNumber)
-			
-		for x in xrange(0, m):
-			for y in xrange(0,n):
-				descriptorFile.write("%d : " % patchNumber)
-				i = x * 10
-				j = y * 10
-
-				# Spatial Descriptor
-				for frame in range(frameNumber, frameNumber + 5, 1):
-					
-					d = 0 #Descriptor number
-					patch = frames[frame][ i : i + 10, j : j + 10]
-					spatialNeighbours = []
-					
-					#AntiClock - wise spatialNeighbours starting from left of current patch
-
-					spatialNeighbours.append(frames[frame][ i - 10 : i, j : j + 10])
-					spatialNeighbours.append(frames[frame][ i - 10 : i, j + 10 : j + 20])
-					spatialNeighbours.append(frames[frame][ i : i + 10, j + 10 : j + 20])
-					spatialNeighbours.append(frames[frame][ i + 10 : i + 20, j + 10 : j + 20])
-					spatialNeighbours.append(frames[frame][ i + 10 : i + 20, j : j + 10])
-					spatialNeighbours.append(frames[frame][ i + 10 : i + 20, j - 10 : j])
-					spatialNeighbours.append(frames[frame][ i : i + 10, j - 10 : j])
-					spatialNeighbours.append(frames[frame][ i - 10 : i, j - 10 : j])
-
-					for neighbour in spatialNeighbours:
-						patch = color.rgb2gray(patch)
-						neighbour = color.rgb2gray(neighbour)
-						if(patch.shape == neighbour.shape):
-							# print patch.shape, neighbour.shape
-							descriptors[patchNumber][d] += ssim(neighbour, patch)
-						d += 1
-
-				for iter in range(10):
-					descriptors[patchNumber][iter] /= 5
-					descriptorFile.write("%f " % descriptors[patchNumber][iter])
-					
-				d = 8
-				# Temporal Descriptors
-				for frame in range(frameNumber, frameNumber + 4, 1):
-					if frame + 1 < len(frames):
-						patch = frames[frame][i : i + 10, j : j + 10]
-						nextPatch = frames[frame + 1][i : i + 10, j : j + 10]
-						patch = color.rgb2gray(patch)
-						nextPatch = color.rgb2gray(nextPatch)	
-						if(nextPatch.shape == patch.shape):
-							descriptors[patchNumber][d]	= ssim(nextPatch, patch)
-					
-					descriptorFile.write("%f " % descriptors[patchNumber][d])
-					d += 1
-
-				if frameNumber - 5 >= 0:
-					for frame in range(frameNumber - 5, frameNumber):
-						patch1 = frames[frame][i : i + 10, j : j + 10]
-						patch2 = frames[frame + 5][i : i + 10, j : j + 10]
-						patch1 = color.rgb2gray(patch1)
-						patch2 = color.rgb2gray(patch2)
-						if (patch1.shape == patch2.shape):
-							descriptors[patchNumber][d]	+= ssim(patch1, patch2) 
-						else :
-							descriptors[patchNumber][d]	+= 0
-
-				descriptors[patchNumber][d] /= 5
-				descriptorFile.write("%f " % descriptors[patchNumber][d])
-				d += 1
-
-				if frameNumber + 10 < len(frames):
-					for frame in range(frameNumber, frameNumber + 5):
-						patch1 = frames[frame][i : i + 10, j : j + 10]
-						patch2 = frames[frame + 5][i : i + 10, j : j + 10]
-						patch1 = color.rgb2gray(patch1)
-						patch2 = color.rgb2gray(patch2)
-						if (patch1.shape == patch2.shape):
-							descriptors[patchNumber][d]	+= ssim(patch1, patch2)
-						else :
-							descriptors[patchNumber][d]	+= 0
-
-				descriptors[patchNumber][d] /= 5
-				descriptorFile.write("%f " % descriptors[patchNumber][d])
-				d += 1
-
-				descriptorFile.write("\n")
-				patchNumber += 1
-	return 
+import scipy.io
+import scipy.optimize
+import time
+from operator import add, sub
 
 def sigmoid(x):
-	return 1/(1+np.exp(-x))
+	return 1/(1 + np.exp(-x))
 
-def KL_Divergence(rho, rho1):
-	return rho/np.log(rho/rho1) + (1 - rho)/np.log((1 - rho)/ (1 - rho1))
+def KLDivergence(rho, rhoCap):
+	return np.sum(rho*np.log(rho/rhoCap) + (1 - rho)/np.log((1 - rho)/ (1 - rhoCap)))
 
 def globalDescriptors(frames):
 	
-	inputNodesSize  = 3      # side length of sampled image patches
-	hiddenNodesSize = 5      # side length of representative image patches
-	rho            	= 0.01   # desired average activation of hidden units
+	inputLayerSize  = 500    # side length of sampled image patches
+	hiddenLayerSize = 100    # side length of representative image patches
+	rho 						= 0.05   # desired average activation of hidden units
 	lamda          	= 0.0001 # weight decay parameter
 	beta           	= 3      # weight of sparsity penalty term
-	num_patches    	= 10000  # number of training examples
-	max_iterations 	= 400    # number of optimization iterations	
-    
-    # Initialize Neural Network weights randomly
-    # W1, W2 values are chosen in the range [-r, r] 
+	max_iterations 	= 400    # number of optimization iterations
+		
+	# Initialize Neural Network weights randomly
 
-	r = np.sqrt(6) / np.sqrt(inputNodesSize + hiddenNodesSize + 1)
+	limit0 = 0
+	limit1 = hiddenLayerSize * inputLayerSize
+	limit2 = 2 * hiddenLayerSize * inputLayerSize
+	limit3 = 2 * hiddenLayerSize * inputLayerSize + hiddenLayerSize
+	limit4 = 2 * hiddenLayerSize * inputLayerSize + hiddenLayerSize + inputLayerSize
+	
+	# W1, W2 values are chosen in the range [-r, r] 
 
-	rand = numpy.random.RandomState(int(time.time()))
-    
-	W1 = numpy.asarray(rand.uniform(low = -r, high = r, size = (hiddenNodesSize, inputNodesSize)))
-	W2 = numpy.asarray(rand.uniform(low = -r, high = r, size = (inputNodesSize, hiddenNodesSize)))
-    
-    # Bias values are initialized to zero 
-    
-	b1 = numpy.zeros((hiddenNodesSize, 1))
-	b2 = numpy.zeros((inputNodesSize, 1))
+	r = np.sqrt(1) / np.sqrt(inputLayerSize + hiddenLayerSize + 1)
 
-    # Create 'theta' by unrolling W1, W2, b1, b2 
+	rand = np.random.RandomState(int(time.time()))
+		
+	W1 = np.asarray(rand.uniform(low = -r, high = r, size = (hiddenLayerSize, inputLayerSize)))
+	W2 = np.asarray(rand.uniform(low = -r, high = r, size = (inputLayerSize, hiddenLayerSize)))
+		
+	# Bias values are initialized to zero 
+		
+	b1 = np.zeros((hiddenLayerSize, 1))
+	b2 = np.zeros((inputLayerSize, 1))
 
-	theta = numpy.concatenate((W1.flatten(), W2.flatten(), b1.flatten(), b2.flatten()))
-    
-    #inputNodes - Each node is intensity of a patch. (10*10*5 values) 
+	theta = np.concatenate((W1.flatten(), W2.flatten(), b1.flatten(), b2.flatten()))
+	# inputNodes - Each node is intensity of a patch. (10*10*5 values) 
+
+	numberOfFrames = len(frames)
+	m,n = frames[0].shape[:2]
+	trainSize = (m/10)*(n/10)*(numberOfFrames/5)  			# number of training examples
 
 	inputNodes = []
-
-	m,n = frames[0].shape[:2]
 
 	for x in xrange(0, len(frames), 5):
 		for i in xrange(0, m, 10):
 			for j in xrange(0, n, 10):
 				node = []
-				for y in xrange(1, 5):
-					for l in xrange(0,10):
-						for m in xrange(0, 10):
-							intensity = frames[y][l, m]
-							node.extend(intensity)
+				for y in xrange(0, 5):
+					for k in xrange(0,10):
+						for l in xrange(0, 10):
+							intensity = frames[x + y][k, l]
+							node.append(intensity)
 				inputNodes.append(node)
 
-	print inputNodes
-
-    # #Feedforward
-    # z1 = np.dot(W1, inputNodes) + b1
-    # o1 = sigmoid(z1)
-    # z2 = np.dot(o1, W2)
+	inputNodes = np.asarray(inputNodes, dtype = np.float32)  #Convert to np array
+	inputNodes = np.transpose(inputNodes)
+	inputNodes = (inputNodes - inputNodes.mean(axis=0)) / inputNodes.std(axis=0) #Normalization
 
 
+	for iter in xrange(max_iterations):
+
+		# print len(np.dot(W1, inputNodes) + b1)
+		W1 = theta[limit0 : limit1].reshape(hiddenLayerSize, inputLayerSize)
+		W2 = theta[limit1 : limit2].reshape(inputLayerSize, hiddenLayerSize)
+		b1 = theta[limit2 : limit3].reshape(hiddenLayerSize, 1)
+		b2 = theta[limit3 : limit4].reshape(inputLayerSize, 1)
+
+		hl = np.dot(W1, inputNodes) + b1
+
+		hiddenLayer = sigmoid(np.dot(W1, inputNodes) + b1)
+		outputLayer = sigmoid(np.dot(W2, hiddenLayer) + b2)
+
+		for i in range(len(hiddenLayer)):
+			if np.all(hiddenLayer[i] == 0):
+				for j in xrange(len(hiddenLayer[i])):
+					hiddenLayer[i][j] += 0.0001
+
+		rhoCap = np.sum(hiddenLayer, axis = 1)/numberOfFrames
+
+		diff = outputLayer - inputNodes
+
+		# print np.dot(W2, hiddenLayer) + b2
+
+		sumOfSquaresError = 0.5 * np.sum(np.multiply(diff, diff)) / numberOfFrames
+		weightDecay       = 0.5 * lamda * (np.sum(np.multiply(W1, W1)) + np.sum(np.multiply(W2, W2)))
+		sparsityPenalty   = beta * KLDivergence(rho, rhoCap)
+		cost              = sumOfSquaresError + weightDecay + sparsityPenalty
+		
+		KLDivGrad = beta * (-(rho / rhoCap) + ((1 - rho) / (1 - rhoCap)))
+
+		delOut = np.multiply(diff, np.multiply(outputLayer, 1 - outputLayer))
+		delHid = np.multiply(np.dot(np.transpose(W2), delOut) + np.transpose(np.matrix(KLDivGrad)), np.multiply(hiddenLayer, 1 - hiddenLayer)) 
+		
+		# print outputLayer
+		 # + np.transpose(np.matrix(KLDivGrad))
+		#Compute the gradient values by averaging partial derivatives
+			
+		W1Grad = np.dot(delHid, np.transpose(inputNodes))
+		W2Grad = np.dot(delOut, np.transpose(hiddenLayer))
+		b1Grad = np.sum(delHid, axis = 1)
+		b2Grad = np.sum(delOut, axis = 1)
+		
+		#Partial derivatives are averaged over all training examples
+
+		W1Grad = W1Grad / numberOfFrames + lamda * W1
+		W2Grad = W2Grad / numberOfFrames + lamda * W2
+		b1Grad = b1Grad / numberOfFrames
+		b2Grad = b2Grad / numberOfFrames	
+
+		# W1 = W1 + W1Grad
+		# W2 = W2 + W2Grad
+		# b1 = b1 + b1Grad
+		# b2 = b2 + b2Grad
+
+		W1 = np.array(W1Grad)
+		W2 = np.array(W2Grad)
+		b1 = np.array(b1Grad)
+		b2 = np.array(b2Grad)
+
+		theta = np.concatenate((W1.flatten(), W2.flatten(), b1.flatten(), b2.flatten()))
+				
+		print cost	
 	return 
+
 
 def readFrames(directory):
 	
@@ -176,10 +147,10 @@ def readFrames(directory):
 	i = 0
 
 	while i < len(fileNames):
-		frames.append(cv2.imread(fileNames[i]))
+		frames.append(cv2.imread(fileNames[i],  cv2.IMREAD_GRAYSCALE))
 		i += 1
 
-	localDescriptors(frames)
+	# localDescriptors(frames)
 	globalDescriptors(frames)
 	return 
 
