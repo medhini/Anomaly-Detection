@@ -117,11 +117,6 @@ def localDescriptors(frames, video_name):
 				patchNumber += 1
 	return  
 
-
-def globalDescriptors(frames):
-	return 
-
-
 def readFrames(directory):
 	
 	print "Feature extraction Started"
