@@ -61,7 +61,6 @@ def localDescriptors(frames, video_name):
 						d += 1
 
 				for iter in range(10):
-					descriptors[patchNumber][iter] /= 5
 					descriptorFile.write("%f " % descriptors[patchNumber][iter])
 					
 				d = 8
@@ -93,7 +92,6 @@ def localDescriptors(frames, video_name):
 						else :
 							descriptors[patchNumber][d]	+= 0
 
-				descriptors[patchNumber][d] /= 5
 				descriptorFile.write("%f " % descriptors[patchNumber][d])
 				d += 1
 
@@ -109,7 +107,6 @@ def localDescriptors(frames, video_name):
 						else :
 							descriptors[patchNumber][d]	+= 0
 
-				descriptors[patchNumber][d] /= 5
 				descriptorFile.write("%f " % descriptors[patchNumber][d])
 				d += 1
 
