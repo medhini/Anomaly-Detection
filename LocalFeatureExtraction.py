@@ -16,6 +16,9 @@ def localDescriptors(frames, video_name):
 	descriptorFile.write(strftime("%Y-%m-%d %H:%M:%S", gmtime()))
 	descriptorFile.write("\n")
 
+	MeanCovarianceFile = open("Scene-Wise-MeanCovarianceValues", "wb")
+	sumOfAll = np.zeros(14)
+
 	for frameNumber in range(0, len(frames), 5):
 		
 		m,n = frames[frameNumber].shape[:2]
@@ -108,11 +111,16 @@ def localDescriptors(frames, video_name):
 							descriptors[patchNumber][d]	+= 0
 
 				descriptorFile.write("%f " % descriptors[patchNumber][d])
-				d += 1
+
 
 				descriptorFile.write("\n")
+				# print descriptors[patchNumber]
+				# print len(descriptors[patchNumber]), len(sumOfAll)
+				sumOfAll = np.sum((descriptors[patchNumber], sumOfAll), axis = 0)
 				patchNumber += 1
-	return  
+	
+	sumOfAll = np.divide(sumOfAll, (len(frames)/5) * 36 * 24)
+	return  sumOfAll
 
 def readFrames(directory):
 	
@@ -127,6 +135,8 @@ def readFrames(directory):
 	videos.sort()
 	
 	print videos
+
+	sumOfAllVideos = np.zeros(14)
 	
 	for video in videos:
 		frames = []
@@ -140,7 +150,11 @@ def readFrames(directory):
 			frames.append(cv2.imread(fileNames[i]))
 			i += 1
 		
-		localDescriptors(frames, video)
+		sumOfAllVideos = np.sum((localDescriptors(frames, video), sumOfAllVideos), axis=0)
+	
+	print np.divide(sumOfAllVideos, 16)
+
+	# Mean - [ 3.56797736  3.33903645  3.86414657  3.30907188  3.56797736  3.33903645 3.86414657  3.30907188  0.98170552  0.98172827  0.98177407  0.98182942 4.52607493  4.37725463]
 	
 	print "Feature extraction complete"
 	print "Time : "
@@ -152,7 +166,3 @@ if __name__ == "__main__":
 
 	DIR = 'UCSD_Anomaly_Dataset.v1p2/UCSDped2/Train'
 	readFrames(DIR)
-
-	# for x in xrange(len(d)):
-	#   for y in xrange(len(d[0])):
-	#       print d[x][y],
