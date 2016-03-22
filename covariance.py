@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 #Inputs: 	fileName->name of the file to read the data from
 #			no_of_features->Number of entries in each line (number of dimensions in each sample)
@@ -36,7 +37,7 @@ def getMatrixFromFile(fileName, no_of_features):
 #Inputs: 	samples->matrix whose cavariance to be found
 #			height, width -> dimensions of the matrix
 
-#Returns:	Covariance matrix of the input matrix
+#Returns:	Covariance matrix and the mean vector of the input matrix.
 def getCovariance(samples, height, width):
 
 	#Calculate the mean of each dimension
@@ -86,11 +87,21 @@ def getCovariance(samples, height, width):
 			j += 1
 		i += 1
 
-	return deviation
+	return deviation, means
 
-s = getMatrixFromFile("dummy", 16)
-#print s
+descriptorFiles = [f for f in os.listdir("./LocalFeatures/")]
 
-h, w = s.shape
-print getCovariance(s, h, w)
+for d in descriptorFiles:
+	filePath = os.path.join("./LocalFeatures", d)
+	
+	s = getMatrixFromFile(filePath, 16)
+	h, w = s.shape
+	covariance, mean = getCovariance(s, h, w) 
+	
+	filename_cov = "./Covariances/cov_" + d					#File to store covariance 
+	filename_mean = "./Means/mean_" + d						#File to store mean
+	
+	np.savetxt(filename_cov , covariance, fmt = "%6f")
+	np.savetxt(filename_mean , mean, fmt = "%6f")
+
 
