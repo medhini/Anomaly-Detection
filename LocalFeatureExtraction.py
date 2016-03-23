@@ -63,7 +63,7 @@ def localDescriptors(frames, video_name):
 							descriptors[patchNumber][d] += ssim(neighbour, patch)
 						d += 1
 
-				for iter in range(10):
+				for iter in range(8):
 					descriptorFile.write("%f " % descriptors[patchNumber][iter])
 					
 				d = 8
@@ -131,7 +131,7 @@ def readFrames(directory):
 	
 	videos = []
 	
-	videos = [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory,name))]
+	videos = [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory,name)) and '_gt' not in name]
 	videos.sort()
 	
 	print videos

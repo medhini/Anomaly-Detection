@@ -15,19 +15,24 @@ def getFrameClass(frames, video_name):
 
 	classLabelFileName = "n_classLabelFile" + video_name
 	classLabelFileName = open(classLabelFileName, "wb")
-		
+
 	normal = []
 	anomalous = {}
 
 	iter = 1
 	for frame in frames:
-		flag = 0
+		temp = []
+
+		flag= 0
 		for x in xrange(frame.shape[0]):
 			for y in xrange(frame.shape[1]):
 				pixel = frame[x][y]
 				if pixel[0] > 0 or pixel[1] > 0 or pixel[2] > 0:
 					flag = 1
-					anomalous[iter] = pixel
+					temp.append((x, y))
+		
+		if(flag == 1):
+			anomalous[iter] = temp
 		
 		if flag == 0:
 			normal.append(iter)
