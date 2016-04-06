@@ -78,7 +78,7 @@ def globalClassifier(globalD):
 	
 	covMat, mean = getCovarianceandMean(globalD)
 	covMatInv = np.linalg.inv(covMat)
-	
+
 	maxThreshold = 0
 	for x in globalD:
 		threshold = np.dot(np.dot((x - mean), covMatInv),(x - mean).transpose())	
@@ -86,6 +86,7 @@ def globalClassifier(globalD):
 			maxThreshold = threshold
 
 		# print np.dot((x - mean), covMatInv)
+	print maxThreshold
 	return maxThreshold, mean, covMatInv
 
 
@@ -103,7 +104,8 @@ def globalDescriptors(frames, video_name):
 	rho 			= 0.05   # desired average activation of hidden units
 	lamda          	= 0.0001 # weight decay parameter
 	beta           	= 3      # weight of sparsity penalty term
-	max_iterations 	= 1      # number of optimization iterations
+	max_iterations 	= 400    # number of optimization iterations
+	learningRate    = 0.5
 		
 	# Initialize Neural Network weights randomly
 
@@ -157,71 +159,72 @@ def globalDescriptors(frames, video_name):
 	inputNodes = np.transpose(inputNodes)
 	inputNodes = (inputNodes - inputNodes.mean(axis=0)) / inputNodes.std(axis=0) #Normalization
 
-
+	numberOfNodes = inputNodes.shape[1]
 	oldCost = 0.0
 	cost = 0.0
-	for iter in xrange(max_iterations):
-
-		W1 = theta[limit0 : limit1].reshape(hiddenLayerSize, inputLayerSize)
-		W2 = theta[limit1 : limit2].reshape(inputLayerSize, hiddenLayerSize)
-		b1 = theta[limit2 : limit3].reshape(hiddenLayerSize, 1)
-		b2 = theta[limit3 : limit4].reshape(inputLayerSize, 1)
-
-		hiddenLayer = np.dot(W1, inputNodes) + b1
-		hiddenLayer = (hiddenLayer - hiddenLayer.mean(axis=0)) / hiddenLayer.std(axis=0)
-		# hiddenLayer = hiddenLayer/sum(hiddenLayer)
-		hiddenLayer = sigmoid(hiddenLayer)
-		outputLayer = sigmoid(np.dot(W2, hiddenLayer) + b2)
-	
-		rhoCap = np.sum(hiddenLayer, axis = 1)/inputNodes.shape[1]
-
-		# print len(outputLayer), len(inputNodes)
-		diff = outputLayer - inputNodes
-
-		# print np.dot(W2, hiddenLayer) + b2
-
-		# if np.all(rhoCap) == 0.0:
-		# 	rhoCap += 0.00001
-
-		sumOfSquaresError = 0.5 * np.sum(np.multiply(diff, diff)) / inputNodes.shape[1]
-		weightDecay       = 0.5 * lamda * (np.sum(np.multiply(W1, W1)) + np.sum(np.multiply(W2, W2)))
-		sparsityPenalty   = beta * KLDivergence(rho, rhoCap)
-		cost              = sumOfSquaresError + weightDecay + sparsityPenalty
-		
-		KLDivGrad = beta * (-(rho / rhoCap) + ((1 - rho) / (1 - rhoCap)))
-
-		delOut = np.multiply(diff, np.multiply(outputLayer, 1 - outputLayer))
-		delHid = np.multiply(np.dot(np.transpose(W2), delOut)  + np.transpose(np.matrix(KLDivGrad)), np.multiply(hiddenLayer, 1 - hiddenLayer))
-		delBias = np.multiply(np.dot(np.transpose(W2), delOut), np.multiply(hiddenLayer, 1 - hiddenLayer))
-		# print outputLayer
-		 # + np.transpose(np.matrix(KLDivGrad))
-		
-		#Compute the gradient values by averaging partial derivatives
-			
-		W1Grad = np.dot(delHid, np.transpose(inputNodes))
-		W2Grad = np.dot(delOut, np.transpose(hiddenLayer))
-		b1Grad = np.sum(delBias, axis = 1)
-		b2Grad = np.sum(delOut, axis = 1)
-		
-		#Partial derivatives are averaged over all training examples
-
-		W1Grad = W1Grad / inputNodes.shape[1] + lamda * W1
-		W2Grad = W2Grad / inputNodes.shape[1] + lamda * W2
-		b1Grad = b1Grad / inputNodes.shape[1]
-		b2Grad = b2Grad / inputNodes.shape[1]	
-
-		W1Grad = np.array(W1Grad)
-		W2Grad = np.array(W2Grad)
-		b1Grad = np.array(b1Grad)
-		b2Grad = np.array(b2Grad)
-
-		theta = np.concatenate((W1Grad.flatten(), W2Grad.flatten(), b1Grad.flatten(), b2Grad.flatten()))
-			
-		if ((cost - oldCost)*(cost - oldCost) < 0.05):
-			break	
-	print cost
 
 	W1 = theta[limit0 : limit1].reshape(hiddenLayerSize, inputLayerSize)
+	W2 = theta[limit1 : limit2].reshape(inputLayerSize, hiddenLayerSize)
+	b1 = theta[limit2 : limit3].reshape(hiddenLayerSize, 1)
+	b2 = theta[limit3 : limit4].reshape(inputLayerSize, 1)
+
+	for iter in xrange(max_iterations):
+		hiddenLayer = sigmoid(np.dot(W1, inputNodes) + b1)
+		rhoCap = np.sum(hiddenLayer, axis = 1)/numberOfNodes
+		inputNodes = np.transpose(inputNodes)
+
+		sumOfSquaresError = 0.0
+		weightDecay = 0.0
+		sparsityPenalty = 0.0
+		for i in xrange(numberOfNodes):
+
+			hiddenLayer = sigmoid(np.dot(W1, np.reshape(inputNodes[i], (-1, 1))) + b1)
+
+			outputLayer = sigmoid(np.dot(W2, hiddenLayer) + b2)
+			
+			diff = outputLayer - np.reshape(inputNodes[i], (-1, 1))
+
+			sumOfSquaresError += 0.5 * np.sum(np.multiply(diff, diff)) / inputNodes.shape[1]
+			weightDecay       += 0.5 * lamda * (np.sum(np.multiply(W1, W1)) + np.sum(np.multiply(W2, W2)))
+			sparsityPenalty   += beta * KLDivergence(rho, rhoCap)
+			
+			KLDivGrad = beta * (-(rho / rhoCap) + ((1 - rho) / (1 - rhoCap)))
+
+			errOut = np.multiply(diff, np.multiply(outputLayer, 1 - outputLayer))
+			errHid = np.multiply(np.dot(np.transpose(W2), errOut)  + np.transpose(np.matrix(KLDivGrad)), np.multiply(hiddenLayer, 1 - hiddenLayer))
+		
+			#Compute the gradient values by averaging partial derivatives
+			W2Grad = np.dot(errOut, np.transpose(hiddenLayer))
+			W1Grad = np.dot(errHid, np.transpose(np.reshape(inputNodes[i], (-1, 1))))
+			b1Grad = np.sum(errHid, axis = 1)
+			b2Grad = np.sum(errOut, axis = 1)
+
+			#Partial derivatives are averaged over all training examples
+
+			W1Grad = learningRate*(W1Grad / inputNodes.shape[1] + lamda * W1)
+			W2Grad = learningRate*(W2Grad / inputNodes.shape[1] + lamda * W2)
+			b1Grad = learningRate*(b1Grad / inputNodes.shape[1])
+			b2Grad = learningRate*(b2Grad / inputNodes.shape[1])	
+
+			W1Grad = np.array(W1Grad)
+			W2Grad = np.array(W2Grad)
+			b1Grad = np.array(b1Grad)
+			b2Grad = np.array(b2Grad)
+
+			# print b2Grad.shape, b2.shape
+			W1 = W1 - W1Grad
+			W2 = W2 - W2Grad
+			b1 = b1 - b1Grad
+			b2 = b2 - np.reshape(b2Grad, (-1, 1))
+
+		
+		print sumOfSquaresError, weightDecay, sparsityPenalty
+		oldCost = cost
+		cost = sumOfSquaresError + weightDecay + sparsityPenalty
+		if ((cost - oldCost)*(cost - oldCost) < 0.05):
+			break	
+		print cost
+
 	np.save(WeightsFileName, W1)
 
 	globalD = np.dot(W1, inputNodes).transpose()
