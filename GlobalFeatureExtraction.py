@@ -168,23 +168,23 @@ def globalDescriptors(frames, video_name):
 	b1 = theta[limit2 : limit3].reshape(hiddenLayerSize, 1)
 	b2 = theta[limit3 : limit4].reshape(inputLayerSize, 1)
 
-	for iter in xrange(max_iterations):
-		hiddenLayer = sigmoid(np.dot(W1, inputNodes) + b1)
-		rhoCap = np.sum(hiddenLayer, axis = 1)/numberOfNodes
-		inputNodes = np.transpose(inputNodes)
+	hiddenLayer = sigmoid(np.dot(W1, inputNodes) + b1)
+	rhoCap = np.sum(hiddenLayer, axis = 1)/numberOfNodes
+	tempInputNodes = np.transpose(inputNodes)
 
+	for iter in xrange(max_iterations):
 		sumOfSquaresError = 0.0
 		weightDecay = 0.0
 		sparsityPenalty = 0.0
 		for i in xrange(numberOfNodes):
 
-			hiddenLayer = sigmoid(np.dot(W1, np.reshape(inputNodes[i], (-1, 1))) + b1)
+			hiddenLayer = sigmoid(np.dot(W1, np.reshape(tempInputNodes[i], (-1, 1))) + b1)
 
 			outputLayer = sigmoid(np.dot(W2, hiddenLayer) + b2)
 			
-			diff = outputLayer - np.reshape(inputNodes[i], (-1, 1))
+			diff = outputLayer - np.reshape(tempInputNodes[i], (-1, 1))
 
-			sumOfSquaresError += 0.5 * np.sum(np.multiply(diff, diff)) / inputNodes.shape[1]
+			sumOfSquaresError += 0.5 * np.sum(np.multiply(diff, diff)) / tempInputNodes.shape[1]
 			weightDecay       += 0.5 * lamda * (np.sum(np.multiply(W1, W1)) + np.sum(np.multiply(W2, W2)))
 			sparsityPenalty   += beta * KLDivergence(rho, rhoCap)
 			
@@ -195,16 +195,16 @@ def globalDescriptors(frames, video_name):
 		
 			#Compute the gradient values by averaging partial derivatives
 			W2Grad = np.dot(errOut, np.transpose(hiddenLayer))
-			W1Grad = np.dot(errHid, np.transpose(np.reshape(inputNodes[i], (-1, 1))))
+			W1Grad = np.dot(errHid, np.transpose(np.reshape(tempInputNodes[i], (-1, 1))))
 			b1Grad = np.sum(errHid, axis = 1)
 			b2Grad = np.sum(errOut, axis = 1)
 
 			#Partial derivatives are averaged over all training examples
 
-			W1Grad = learningRate*(W1Grad / inputNodes.shape[1] + lamda * W1)
-			W2Grad = learningRate*(W2Grad / inputNodes.shape[1] + lamda * W2)
-			b1Grad = learningRate*(b1Grad / inputNodes.shape[1])
-			b2Grad = learningRate*(b2Grad / inputNodes.shape[1])	
+			W1Grad = learningRate*(W1Grad / tempInputNodes.shape[1] + lamda * W1)
+			W2Grad = learningRate*(W2Grad / tempInputNodes.shape[1] + lamda * W2)
+			b1Grad = learningRate*(b1Grad / tempInputNodes.shape[1])
+			b2Grad = learningRate*(b2Grad / tempInputNodes.shape[1])	
 
 			W1Grad = np.array(W1Grad)
 			W2Grad = np.array(W2Grad)
