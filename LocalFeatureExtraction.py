@@ -112,10 +112,7 @@ def localDescriptors(frames, video_name):
 
 				descriptorFile.write("%f " % descriptors[patchNumber][d])
 
-
 				descriptorFile.write("\n")
-				# print descriptors[patchNumber]
-				# print len(descriptors[patchNumber]), len(sumOfAll)
 				sumOfAll = np.sum((descriptors[patchNumber], sumOfAll), axis = 0)
 				patchNumber += 1
 	
@@ -154,8 +151,6 @@ def readFrames(directory):
 	
 	print np.divide(sumOfAllVideos, 16)
 
-	# Mean - [ 3.56797736  3.33903645  3.86414657  3.30907188  3.56797736  3.33903645 3.86414657  3.30907188  0.98170552  0.98172827  0.98177407  0.98182942 4.52607493  4.37725463]
-	
 	print "Feature extraction complete"
 	print "Time : "
 	print strftime("%Y-%m-%d %H:%M:%S", gmtime())

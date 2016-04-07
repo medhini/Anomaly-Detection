@@ -16,7 +16,7 @@ import pickle
 def globalDescriptors(frames, video_name):
 	
 	anomalousFileName = "n_anomalousFile" + video_name
-	
+	anomalousFile = open(anomalousFileName, "wb")
 	# inputNodes - Each node is intensity of a patch. (10*10*5 values) 
 
 	numberOfFrames = len(frames)
@@ -48,7 +48,7 @@ def globalDescriptors(frames, video_name):
 
 	for thresholdFileName in thresholdFileNames:
 		thresholdFile = open(thresholdFileName, "rb")
-		thresholds.append(thresholdFile.read())
+		thresholds.append(float(thresholdFile.read()))
 
 	print thresholds
 	"""Read weights"""
@@ -62,27 +62,37 @@ def globalDescriptors(frames, video_name):
 	meanCovarianceFileNames.sort()
 
 	AnomalousPatches = []
+
 	for i in xrange(len(weightFileNames)):
 		
 		W1 = np.load(weightFileNames[i])
 
+		# print W1
 		data = np.load(meanCovarianceFileNames[i])
 		mean = data['mean']
 		covMatInv = data['covMatInv']
+
+		# print mean, covMatInv
 
 		globalD = np.dot(W1, inputNodes).transpose()
 
 		"""Classification"""
 		for x in xrange(len(globalD)):
 			mahalanobisDist = np.dot(np.dot((globalD[x] - mean), covMatInv),(globalD[x] - mean).transpose())
-			print mahalanobisDist
+			# print mahalanobisDist
+			flag = 0
 			for j in xrange(len(thresholds)):
-				if mahalanobisDist > thresholds[j]:
-					AnomalousPatches.append(x)
-					print mahalanobisDist
+				if mahalanobisDist <= thresholds[j]:
+					# print mahalanobisDist, thresholds[j]
+					flag = 1
 
-	pickle.dump(AnomalousPatches, anomalousFileName)
+			if flag == 0:
+				AnomalousPatches.append(x)
+				# print mahalanobisDist
 
+	pickle.dump(AnomalousPatches, anomalousFile)
+
+	# weightFile
 	return 
 
 def readFrames(directory):
