@@ -83,15 +83,17 @@ def globalDescriptors(frames, video_name):
 			flag = 0
 			for j in xrange(len(thresholds)):
 				if mahalanobisDist <= thresholds[j]:
-					# print mahalanobisDist, thresholds[j]
 					flag = 1
 
+			if flag == 1:
+				continue
 			if flag == 0:
 				AnomalousPatches.append(x)
-				# print mahalanobisDist
 
+	print len(AnomalousPatches)
 	pickle.dump(AnomalousPatches, anomalousFile)
 
+	thresholdFile.close()
 	# weightFile
 	return 
 
