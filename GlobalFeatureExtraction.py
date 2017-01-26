@@ -100,8 +100,8 @@ def globalDescriptors(frames, video_name):
 	thresholdFile = open(thresholdFileName, "wb")
 
 	inputLayerSize  = 500    # side length of sampled image patches
-	hiddenLayerSize = 100    # side length of representative image patches
-	rho 			= 0.05   # desired average activation of hidden units
+	hiddenLayerSize = 750    # side length of representative image patches
+	rho 		= 0.05   # desired average activation of hidden units
 	lamda          	= 0.0001 # weight decay parameter
 	beta           	= 3      # weight of sparsity penalty term
 	max_iterations 	= 400    # number of optimization iterations
